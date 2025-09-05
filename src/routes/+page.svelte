@@ -4,7 +4,7 @@
     import { sessionId, status, connectWS } from "$lib/ws";
     import { qr } from "@svelte-put/qr/svg";
     import { browser } from "$app/environment";
-    import { API_BASE } from "$lib/config";
+    import { httpUrl } from "$lib/config";
 
     let isMobile = false;
     if (browser) {
@@ -129,7 +129,7 @@
             fd.append("file", item.file, item.file.name);
 
             const xhr = new XMLHttpRequest();
-            xhr.open("POST", `${API_BASE}/upload`);
+            xhr.open("POST", httpUrl("/upload"));
             
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {

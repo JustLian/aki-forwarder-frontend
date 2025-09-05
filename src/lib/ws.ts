@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import { API_BASE } from "$lib/config";
+import { wsUrl } from "$lib/config";
 
 export const sessionId = writable<string | null>(null);
 export const status = writable<string>("waiting");
@@ -8,7 +8,7 @@ let ws: WebSocket | null = null;
 
 
 export function connectWS() {
-    ws = new WebSocket(`ws://${API_BASE}/ws`);
+    ws = new WebSocket(wsUrl("/ws"));
     
     ws.onopen = () => {
         status.set("connected");
