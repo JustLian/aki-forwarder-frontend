@@ -5,6 +5,7 @@
     import { qr } from "@svelte-put/qr/svg";
     import { browser } from "$app/environment";
     import { httpUrl } from "$lib/config";
+    import aki from '$lib/assets/aki.png';
 
     let isMobile = false;
     if (browser) {
@@ -255,5 +256,7 @@
         {/if}
     </div>
 
+    <img class="aki" src={aki} alt="Adagaki Aki">
+    
 </div>
 {/if}

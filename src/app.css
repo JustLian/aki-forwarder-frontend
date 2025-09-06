@@ -90,3 +90,12 @@ body {
     background-color: var(--color-accent);
     height: 100%;
 }
+
+
+.aki {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 18vw;
+    opacity: 0.75;
+}
