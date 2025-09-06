@@ -55,7 +55,23 @@ body {
 .queue {
     min-height: 5em;
     max-height: 18em;
-    overflow-x: scroll;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.queue::-webkit-scrollbar {
+  width: 10px;
+}
+
+.queue::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.queue::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 .item-file {
