@@ -4,7 +4,8 @@
     import { sessionId, status, connectWS } from "$lib/ws";
     import { qr } from "@svelte-put/qr/svg";
     import { browser } from "$app/environment";
-    import { httpUrl } from "$lib/config";
+    import { addFiles, removeItem, clearDone, uploadQueue, queue, uploading } from "$lib/uploadQueue";
+    
     import aki from '$lib/assets/aki.png';
 
     let isMobile = false;
@@ -14,54 +15,12 @@
         isMobile = mobileRe.test(ua) || window.innerWidth < 900;
     }
 
-    type QueueItem = {
-        file: File;
-        id: string;
-        progress: number;
-        state: "pending" | "uploading" | "done" | "error" | "skipped";
-        error?: string;
-    }
+    $: $sessionId, $status, $queue, $uploading;
 
-    let queue: QueueItem[] = [];
-    let uploading = false;
-    let message = "";
-
-    $: $sessionId, $status;
 
     onMount(() => {
         connectWS();
     });
-
-    function makeId(f: File) {
-        return `${f.name}|${f.size}|${f.lastModified}`
-    }
-
-    function addFiles(files: FileList | File[]) {
-        const arr = Array.from(files);
-        for (const f of arr) {
-            if (f.size > 8 * 1024 * 1024) {
-                queue.push({
-                    file: f,
-                    id: makeId(f),
-                    progress: 0,
-                    state: "skipped",
-                    error: "Max file size is 8MB"
-                });
-                continue;
-            }
-
-            const id = makeId(f);
-            if (!queue.some((q) => q.id === id)) {
-                queue.push({
-                    file: f,
-                    id,
-                    progress: 0,
-                    state: "pending"
-                })
-            }
-        }
-        queue = queue; // update pls
-    }
 
     function onInputChange(e: Event) {
         const input = e.target as HTMLInputElement;
@@ -82,89 +41,6 @@
         if (files && files.length) {
             addFiles(files);
         }
-    }
-
-    async function uploadQueue() {
-        message = "";
-        if (!browser) return;
-        if (!$sessionId) {
-            message = "Link Telegram first.";
-            return;
-        }
-
-        if (uploading) return;
-
-        uploading = true;
-        try {
-            for (const item of queue) {
-                if (item.state !== "pending") continue;
-                item.state = "uploading";
-                item.progress = 0;
-                queue = queue;
-                
-                try {
-                    await uploadOne(item);
-                    item.state = "done";
-                    item.progress = 100;
-                } catch (err: any) {
-                    item.state = "error";
-                    item.error = err?.message || "Upload failed"
-                } finally {
-                    queue = queue;
-                }
-
-            }
-        } finally {
-            uploading = false;
-        }
-    }
-
-    function uploadOne(item: QueueItem) {
-        if (!$sessionId) {
-            throw new Error("Link Telegram first.");
-        }
-
-        return new Promise<void>((resolve, reject) => {
-            const fd = new FormData();
-            fd.append("sessionId", $sessionId);
-            fd.append("file", item.file, item.file.name);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", httpUrl("/upload"));
-            
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    item.progress = Math.round(e.loaded / e.total * 100);
-                    queue = queue;
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve();
-                } else {
-                    const msg = 
-                        xhr.response?.detail ??
-                        xhr.response?.message ??
-                        `HTTP ${xhr.status}`;
-                    reject(new Error(msg));
-                }
-            }
-
-            xhr.onerror = () => {
-                reject(new Error("Network error occurred"));
-            }
-
-            xhr.send(fd);
-        });
-    }
-
-    function clearDone() {
-        queue = queue.filter(q => q.state !== "done" && q.state !== "skipped");
-    }
-
-    function removeItem(id: string) {
-        queue = queue.filter(q => q.id !== id);
     }
 
 </script>
@@ -202,7 +78,7 @@
                 <label for="file-input" class="base-border file-select font-semibold cursor-pointer">Select files <span class="gray-text font-medium">(max 8mb)</span></label>
             </div>
             <div class="item queue p-2 gap-2 flex flex-col">
-                {#each queue as item (item.id)}
+                {#each $queue as item (item.id)}
                     <div class="row base-border item-file p-3 gap-1 flex flex-col">
                         <div class="flex flex-row justify-between items-center">
                             <div>
@@ -236,16 +112,13 @@
                 {/each}
             </div>
             <div>
-                <button class="base-border px-4 cursor-pointer font-semibold" on:click|preventDefault={uploadQueue} disabled={uploading || queue.every(q => q.state !== "pending")}>
-                    {uploading ? "Uploading..." : "Upload all"}
+                <button class="base-border px-4 cursor-pointer font-semibold" on:click|preventDefault={(e) => uploadQueue($sessionId)} disabled={$uploading || $queue.every(q => q.state !== "pending")}>
+                    {$uploading ? "Uploading..." : "Upload all"}
                 </button>
                 <button class="small base-border px-4 cursor-pointer font-semibold" on:click={clearDone}>
                     Clear done
                 </button>
             </div>
-        {/if}
-        {#if message}
-            <p>{message}</p>
         {/if}
     </div>
 
